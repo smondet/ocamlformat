@@ -361,7 +361,8 @@ let add_cmts ?prev ?next tbl loc cmts =
             Option.value_map next ~default:"no next"
               ~f:(string_between_inclusive cmt_loc)
           in
-          Format.eprintf "add %s %a: %a \"%s\" %s \"%s\"@\n"
+          Format.eprintf
+            "add %s %a: %a \"%s\" %s \"%s\"@\n"
             (if phys_equal tbl cmts_before then "before" else "after")
             Location.fmt loc Location.fmt cmt_loc (String.escaped btw_prev)
             cmt_txt (String.escaped btw_next) ) ;
@@ -448,7 +449,9 @@ let init map_ast loc_of_ast src asts comments_n_docstrings =
   let comments = dedup_cmts map_ast asts comments_n_docstrings in
   if Conf.debug then
     List.iter comments ~f:(fun (txt, loc) ->
-        Format.eprintf "%a %s %s@\n" Location.fmt loc txt
+        Format.eprintf
+          "%a %s %s@\n"
+          Location.fmt loc txt
           (if ends_line loc then "eol" else "") ) ;
   if not (List.is_empty comments) then
     let loc_tree = Loc_tree.of_ast map_ast asts in
@@ -472,8 +475,9 @@ let relocate ~src ~before ~after =
                 f src_data dst_data ) ) )
   in
   if Conf.debug then
-    Format.eprintf "relocate %a to %a and %a@\n" Location.fmt src
-      Location.fmt before Location.fmt after ;
+    Format.eprintf
+      "relocate %a to %a and %a@\n"
+      Location.fmt src Location.fmt before Location.fmt after ;
   update_multi cmts_before src before ~f:(fun src_cmts dst_cmts ->
       List.append src_cmts dst_cmts ) ;
   update_multi cmts_after src after ~f:(fun src_cmts dst_cmts ->

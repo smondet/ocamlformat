@@ -60,10 +60,13 @@ let rec is_sugared_list exp =
   | _ -> false
 
 
-let rec is_trivial exp =
+let rec is_trivial (c: Conf.t) exp =
   match exp.pexp_desc with
+  | Pexp_constant Pconst_string (s, _)
+    when Polymorphic_compare.equal c.break_string_literals `Newlines ->
+      not (String.mem s '\n')
   | Pexp_constant _ | Pexp_field _ | Pexp_ident _ -> true
-  | Pexp_construct (_, exp) -> Option.for_all exp ~f:is_trivial
+  | Pexp_construct (_, exp) -> Option.for_all exp ~f:(is_trivial c)
   | _ -> false
 
 
@@ -94,22 +97,26 @@ module T = struct
     | Typ t -> Format.fprintf fs "Typ:@\n%a" Pprintast.core_type t
     | Pat p -> Format.fprintf fs "Pat:@\n%a" Pprintast.pattern p
     | Exp e ->
-        Format.fprintf fs "Exp:@\n%a@\n@\n%a" Pprintast.expression e
-          (Printast.expression 0) e
+        Format.fprintf fs
+          "Exp:@\n%a@\n@\n%a"
+          Pprintast.expression e (Printast.expression 0) e
     | Mty mt ->
         let si =
           let open Ast_helper in
           Sig.modtype (Mtd.mk {txt= ""; loc= Location.none} ~typ:mt)
         in
-        Format.fprintf fs "Mty:@\n%a@\n%a" Pprintast.signature [si]
-          Printast.interface [si]
+        Format.fprintf fs
+          "Mty:@\n%a@\n%a"
+          Pprintast.signature [si] Printast.interface [si]
     | Mod _ -> Format.pp_print_string fs "Mod"
     | Sig s ->
-        Format.fprintf fs "Sig:@\n%a@\n%a" Pprintast.signature [s]
-          Printast.interface [s]
+        Format.fprintf fs
+          "Sig:@\n%a@\n%a"
+          Pprintast.signature [s] Printast.interface [s]
     | Str s ->
-        Format.fprintf fs "Str:@\n%a@\n%a" Pprintast.structure [s]
-          Printast.implementation [s]
+        Format.fprintf fs
+          "Str:@\n%a@\n%a"
+          Pprintast.structure [s] Printast.implementation [s]
     | Top -> Format.pp_print_string fs "Top"
 end
 
@@ -480,6 +487,9 @@ end = struct
   let rec is_simple (c: Conf.t) width ({ast= exp} as xexp) =
     let ctx = Exp exp in
     match exp.pexp_desc with
+    | Pexp_constant Pconst_string (s, _)
+      when Polymorphic_compare.equal c.break_string_literals `Newlines ->
+        not (String.mem s '\n')
     | Pexp_array _ | Pexp_constant _ | Pexp_field _ | Pexp_ident _
      |Pexp_record _ | Pexp_tuple _ | Pexp_variant _
      |Pexp_construct (_, None) ->
@@ -491,7 +501,7 @@ end = struct
     | Pexp_construct (_, Some e0) -> is_simple c width (sub_exp ~ctx e0)
     | Pexp_apply ({pexp_desc= Pexp_ident {txt= Lident ":="}}, _) -> false
     | Pexp_apply (e0, e1N) ->
-        is_trivial e0 && List.for_all e1N ~f:(snd >> is_trivial)
+        is_trivial c e0 && List.for_all e1N ~f:(snd >> is_trivial c)
         && width xexp * 3 < c.margin
     | _ -> false
 

@@ -639,6 +639,9 @@ and fmt_pattern (c: Conf.t) ?pro ?parens ({ctx= ctx0; ast= pat} as xpat) =
       in
       let is_simple {ppat_desc} =
         match ppat_desc with
+        | Ppat_constant Pconst_string (s, _)
+          when Polymorphic_compare.equal c.break_string_literals `Newlines ->
+            not (String.mem s '\n')
         | Ppat_any | Ppat_constant _ | Ppat_var _
          |Ppat_variant (_, (None | Some {ppat_desc= Ppat_any}))
          |Ppat_construct (_, (None | Some {ppat_desc= Ppat_any})) ->
@@ -1684,12 +1687,15 @@ and fmt_signature c ctx itms =
   let fmt_grp itms =
     list itms "@\n" (sub_sig ~ctx >> fmt_signature_item c)
   in
-  hvbox 0 (list grps "\n@;<1000 0>" fmt_grp)
+  hvbox 0 (list grps "\n\
+                      @;<1000 0>" fmt_grp)
 
 
 and fmt_signature_item c {ast= si} =
   protect (Sig si)
-  @@ Cmts.fmt ~epi:(fmt "\n@\n") ~eol:(fmt "\n@\n") si.psig_loc
+  @@ Cmts.fmt ~epi:(fmt "\n\
+                         @\n") ~eol:(fmt "\n\
+                                          @\n") si.psig_loc
   @@
   let ctx = Sig si in
   match si.psig_desc with
@@ -2083,7 +2089,8 @@ and fmt_structure c ?(sep= "") ctx itms =
   in
   hvbox 0
     (list_fl grps (fun ~first ~last grp ->
-         fmt_if (not first) "\n@\n" $ fmt_grp ~last grp ))
+         fmt_if (not first) "\n\
+                             @\n" $ fmt_grp ~last grp ))
 
 
 and fmt_structure_item c ~sep ~last:last_item {ctx; ast= si} =
@@ -2092,9 +2099,15 @@ and fmt_structure_item c ~sep ~last:last_item {ctx; ast= si} =
   let at_top = Poly.(ctx = Top) in
   let ctx = Str si in
   let fmt_cmts_before =
-    Cmts.fmt_before ~epi:(fmt "\n@\n") ~eol:(fmt "\n@\n") ~adj:(fmt "@\n")
+    Cmts.fmt_before
+      ~epi:(fmt "\n\
+                 @\n")
+      ~eol:(fmt "\n\
+                 @\n")
+      ~adj:(fmt "@\n")
       si.pstr_loc
-  and fmt_cmts_after = Cmts.fmt_after ~pro:(fmt "\n@\n") si.pstr_loc in
+  and fmt_cmts_after = Cmts.fmt_after ~pro:(fmt "\n\
+                                                 @\n") si.pstr_loc in
   wrap_k fmt_cmts_before fmt_cmts_after
   @@
   match si.pstr_desc with
@@ -2147,7 +2160,8 @@ and fmt_structure_item c ~sep ~last:last_item {ctx; ast= si} =
         (list_fl bindings (fun ~first ~last binding ->
              fmt_value_binding c ~rec_flag ~first ctx binding
                ~epi:(fits_breaks ~force_fit_if:last_item "" "\n")
-             $ fmt_if (not last) "\n@\n" ))
+             $ fmt_if (not last) "\n\
+                                  @\n" ))
   | Pstr_modtype mtd -> fmt_module_type_declaration c ctx mtd
   | Pstr_extension (ext, atrs) ->
       let doc, atrs = doc_atrs atrs in
